@@ -12,13 +12,15 @@
 #include "AudioSampleGong.h"         // http://www.freesound.org/people/juskiddink/sounds/86773/
 #include "AudioSampleCashregister.h" // http://www.freesound.org/people/kiddpark/sounds/201159/
 
+#include "Track.h"
+
 // Create the Audio components.  These should be created in the
 // order data flows, inputs/sources -> processing -> outputs
 //
 AudioPlayMemory    sound0;
 AudioPlayMemory    sound1;
 AudioMixer4        mixer;
-AudioOutputAnalog  dac;     // play to both I2S audio board and on-chip DAC
+AudioOutputAnalog  dac;     // play to on-chip DAC
 
 // Create Audio connections between the components
 //
@@ -26,19 +28,30 @@ AudioConnection c1(sound0, 0, mixer, 1);
 AudioConnection c2(sound1, 0, mixer, 0);
 AudioConnection c3(mixer, 0, dac, 0);
 
+uint8_t kick_pattern[16] = 
+           {1, 1, 0, 0,
+            1, 0, 0, 0,
+            1, 0, 0, 0,
+            1, 0, 0, 0};
+Track kick(kick_pattern,
+           &sound0,
+           AudioSampleKick);
+
+uint8_t snare_pattern[16] = 
+           {0, 0, 1, 0,
+            0, 0, 1, 0,
+            0, 0, 1, 0,
+            0, 0, 1, 1};
+Track snare(snare_pattern,
+            &sound1,
+            AudioSampleSnare);
+
+
 // loop variables
-uint8_t pattern0[16] = {1, 1, 0, 0,
-                       1, 0, 0, 0,
-                       1, 0, 0, 0,
-                       1, 0, 0, 0};
-uint8_t pattern1[16] = {0, 0, 1, 0,
-                       0, 0, 1, 0,
-                       0, 0, 1, 0,
-                       0, 0, 1, 1};
 unsigned long step_start_time = 0;
 uint8_t step_num = 0;
 
-const uint8_t BPM = 100;
+const uint8_t BPM = 60;
 
 void setup() {
 
@@ -54,18 +67,13 @@ void setup() {
   // reduce gains for everyone
   mixer.gain(0, 0.5);
   mixer.gain(0, 0.5);
-
 }
 
 void loop() {
     if (millis() > step_start_time) {
       // time to start the next step
-      if (pattern0[step_num]) {
-        sound0.play(AudioSampleKick);
-      }
-      if (pattern1[step_num]) {
-        sound1.play(AudioSampleSnare);
-      }
+      kick.playStep(step_num);
+      snare.playStep(step_num);
 
       // reset the step counters
       step_start_time += 60000 / BPM / 4.0f;
