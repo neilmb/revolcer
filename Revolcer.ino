@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <SerialFlash.h>
+#include <U8g2lib.h>
 
 // WAV files converted to code by wav2sketch
 #include "AudioSampleSnare.h"        // http://www.freesound.org/people/KEVOY/sounds/82583/
@@ -49,11 +50,35 @@ Track snare(snare_pattern,
 
 // loop variables
 unsigned long step_start_time = 0;
-uint8_t step_num = 0;
+uint8_t step_num = -1;
+uint8_t last_step_num;
 
 const uint8_t BPM = 60;
 
+// OLED display
+U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ SCL, /* data=*/ SDA);
+
 void setup() {
+  // setup display
+  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+  u8g2.begin();
+
+  u8g2.clearBuffer();
+  // paint the track patterns
+  for (int i = 0; i < 16; i++) {
+    if (kick._pattern[i]) {
+      u8g2.drawBox(i * 8 + 2, 2, 6, 12);
+    } else {
+      u8g2.drawFrame(i * 8 + 2, 2, 6, 12);
+    }
+    if (snare._pattern[i]) {
+      u8g2.drawBox(i * 8 + 2, 16, 6, 12);
+    } else {
+      u8g2.drawFrame(i * 8 + 2, 16, 6, 12);
+    }
+
+  }
+  u8g2.sendBuffer();
 
   // Audio connections require memory to work.  For more
   // detailed information, see the MemoryAndCpuUsage example
@@ -72,11 +97,22 @@ void setup() {
 void loop() {
     if (millis() > step_start_time) {
       // time to start the next step
+      last_step_num =  step_num;
+      step_num = (step_num + 1) % 16;
+      step_start_time += 60000 / BPM / 4.0f;
+
+      // current step display
+      u8g2.setDrawColor(0);  // blank out last steps lines
+      u8g2.drawHLine(last_step_num * 8 + 1, 0, 7);
+      u8g2.drawHLine(last_step_num * 8 + 1, 31, 7);
+
+      u8g2.setDrawColor(1);
+      u8g2.drawHLine(step_num * 8 + 1, 0, 7);
+      u8g2.drawHLine(step_num * 8 + 1, 31, 7);
+      u8g2.sendBuffer();
+
+      // play the notes
       kick.playStep(step_num);
       snare.playStep(step_num);
-
-      // reset the step counters
-      step_start_time += 60000 / BPM / 4.0f;
-      step_num = (step_num + 1) % 16;
     }
 }

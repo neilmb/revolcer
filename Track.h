@@ -9,9 +9,9 @@ class Track {
     Track(uint8_t* pattern, AudioPlayMemory* player, const unsigned int* sample);
 
     void playStep(uint8_t step_num);
+    uint8_t* _pattern;
 
   private:
-    uint8_t* _pattern;
     AudioPlayMemory* _player;
     const unsigned int* _sample;
 };
