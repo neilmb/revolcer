@@ -22,9 +22,9 @@ Display::Display(Track** tracks)
   for (int i = 0; i < NUM_STEPS; i++) {
     for (int j = 0; j < NUM_TRACKS; j++) {
       if (tracks[j]->_pattern[i]) {
-        u8g2->drawBox(i * 8 + 2, 14 * j + 2, 6, 12);
+        u8g2->drawBox(i * 8 + 2, 9 * j + 2, 6, 7);
       } else {
-        u8g2->drawFrame(i * 8 + 2, 14 * j + 2, 6, 12);
+        u8g2->drawFrame(i * 8 + 2, 9 * j + 2, 6, 7);
       }
     }
   }

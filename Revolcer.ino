@@ -21,6 +21,7 @@
 //
 AudioPlayMemory    sound0;
 AudioPlayMemory    sound1;
+AudioPlayMemory    sound2;
 AudioMixer4        mixer;
 AudioOutputAnalog  dac;     // play to on-chip DAC
 
@@ -28,7 +29,8 @@ AudioOutputAnalog  dac;     // play to on-chip DAC
 //
 AudioConnection c1(sound0, 0, mixer, 1);
 AudioConnection c2(sound1, 0, mixer, 0);
-AudioConnection c3(mixer, 0, dac, 0);
+AudioConnection c3(sound2, 0, mixer, 2);
+AudioConnection c4(mixer, 0, dac, 0);
 
 uint8_t kick_pattern[NUM_STEPS] =
            {1, 1, 0, 0,
@@ -48,7 +50,16 @@ Track snare(snare_pattern,
             &sound1,
             AudioSampleSnare);
 
-Track *tracks[NUM_TRACKS] = { &kick, &snare };
+uint8_t hat_pattern[NUM_STEPS] =
+           {0, 1, 1, 0,
+            0, 1, 1, 0,
+            0, 1, 1, 0,
+            0, 1, 1, 0};
+Track hat(hat_pattern,
+            &sound2,
+            AudioSampleHihat);
+
+Track *tracks[NUM_TRACKS] = { &kick, &snare, &hat };
 
 Display display(tracks);
 

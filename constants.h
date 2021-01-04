@@ -4,6 +4,6 @@
 # define CONSTANTS_H
 
 #define NUM_STEPS 16
-#define NUM_TRACKS 2
+#define NUM_TRACKS 3
 
 #endif
