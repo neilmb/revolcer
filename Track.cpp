@@ -14,3 +14,12 @@ void Track::playStep(uint8_t step_num) {
     _player->play(_sample);  
   }
 }
+
+void Track::toggleStep(uint8_t step_num) {
+  // toggle the value of the pattern at one step
+  if (_pattern[step_num]) {
+    _pattern[step_num] = 0;
+  } else {
+    _pattern[step_num] = 1;
+  }
+}

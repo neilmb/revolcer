@@ -2,6 +2,6 @@
 
 ## TODO
 
-- Add interaction with an encoder and button
 - Add effects to the sounds
+- Add encoder interaction
 - More tracks??

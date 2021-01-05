@@ -21,13 +21,18 @@ Display::Display(Track** tracks)
 
   u8g2->clearBuffer();
   // paint the track patterns
+  for (int j = 0; j < NUM_TRACKS; j++) {
+    displayTrack(j);
+  }
+}
+
+void Display::displayTrack(uint8_t track_num) {
   for (int i = 0; i < NUM_STEPS; i++) {
-    for (int j = 0; j < NUM_TRACKS; j++) {
-      if (tracks[j]->_pattern[i]) {
-        u8g2->drawBox(i * 8 + 2, 9 * j + 2, 6, 7);
-      } else {
-        u8g2->drawFrame(i * 8 + 2, 9 * j + 2, 6, 7);
-      }
+    if (_tracks[track_num]->_pattern[i]) {
+      u8g2->drawBox(i * 8 + 2, 9 * track_num + 2, 6, 7);   
+    } else {
+      u8g2->setDrawColor(0); u8g2->drawBox(i * 8 + 2, 9 * track_num + 2, 6, 7);
+      u8g2->setDrawColor(1); u8g2->drawFrame(i * 8 + 2, 9 * track_num + 2, 6, 7);
     }
   }
   u8g2->sendBuffer();

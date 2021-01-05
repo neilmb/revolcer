@@ -67,7 +67,6 @@ Display display(tracks);
 // loop variables
 unsigned long step_start_time = 0;
 uint8_t step_num = -1;
-bool is_playing = 0;
 
 const uint8_t BPM = 60;
 
@@ -102,20 +101,18 @@ void setup() {
 }
 
 void loop() {
-    if (is_playing) {
-      if (millis() > step_start_time) {
-        // time to start the next step
-        step_num = (step_num + 1) % NUM_STEPS;
-        step_start_time += 60000 / BPM / 4.0f;  // 4 steps per beat, 60000 milliseconds per minute
+    if (millis() > step_start_time) {
+      // time to start the next step
+      step_num = (step_num + 1) % NUM_STEPS;
+      step_start_time += 60000 / BPM / 4.0f;  // 4 steps per beat, 60000 milliseconds per minute
 
-        // draw for this step
-        display.displayStep(step_num);
+      // draw for this step
+      display.displayStep(step_num);
 
-        // play the notes
-        for (int j = 0; j < NUM_TRACKS; j++) {
-          tracks[j]->playStep(step_num);
-        }  
-      }
+      // play the notes
+      for (int j = 0; j < NUM_TRACKS; j++) {
+        tracks[j]->playStep(step_num);
+      }  
     }
 
     // handle button presses
@@ -127,13 +124,9 @@ void loop() {
         // the button was released
         button_held_time = millis() - button_start_time;
         if (button_held_time > 500) {  // TODO: make the magic number into LONG_PRESS_TIME?
-          // long press stops/starts playing
-          if (is_playing) {
-            is_playing = 0;
-          } else {
-            is_playing = 1;
-            step_start_time = millis();
-          }
+          // long press toggles the pattern at this step
+          tracks[selected_track]->toggleStep(selected_step);
+          display.displayTrack(selected_track);
         } else {
           // short press, move the selection
           selected_step = (selected_step + 1) % NUM_STEPS;

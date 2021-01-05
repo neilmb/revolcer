@@ -10,6 +10,7 @@
 class Display {
   public:
     Display(Track **tracks);
+    void displayTrack(uint8_t track_num);
     void displayStep(uint8_t step_num);
     void displaySelection(uint8_t selected_step, uint8_t selected_track);
 
