@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <SerialFlash.h>
+#include <Bounce.h>
 
 // WAV files converted to code by wav2sketch
 #include "AudioSampleSnare.h"        // http://www.freesound.org/people/KEVOY/sounds/82583/
@@ -66,10 +67,18 @@ Display display(tracks);
 // loop variables
 unsigned long step_start_time = 0;
 uint8_t step_num = -1;
+bool is_playing = 0;
 
 const uint8_t BPM = 60;
 
+// one button to start with on pin 14, 20ms debounce time
+Bounce button = Bounce(14, 20);
+unsigned long button_start_time = 0;
+unsigned long button_held_time = 0;
 
+// UI variables
+uint8_t selected_track = 0;
+uint8_t selected_step = 0;
 
 void setup() {
 
@@ -85,20 +94,55 @@ void setup() {
   // reduce gains for everyone
   mixer.gain(0, 0.5);
   mixer.gain(0, 0.5);
+
+  // button setup
+  pinMode(14, INPUT_PULLUP);
+
+  display.displaySelection(selected_track, selected_step);
 }
 
 void loop() {
-    if (millis() > step_start_time) {
-      // time to start the next step
-      step_num = (step_num + 1) % NUM_STEPS;
-      step_start_time += 60000 / BPM / 4.0f;  // 4 steps per beat, 60000 milliseconds per minute
+    if (is_playing) {
+      if (millis() > step_start_time) {
+        // time to start the next step
+        step_num = (step_num + 1) % NUM_STEPS;
+        step_start_time += 60000 / BPM / 4.0f;  // 4 steps per beat, 60000 milliseconds per minute
 
-      // draw for this step
-      display.displayStep(step_num);
+        // draw for this step
+        display.displayStep(step_num);
 
-      // play the notes
-      for (int j = 0; j < NUM_TRACKS; j++) {
-        tracks[j]->playStep(step_num);
+        // play the notes
+        for (int j = 0; j < NUM_TRACKS; j++) {
+          tracks[j]->playStep(step_num);
+        }  
+      }
+    }
+
+    // handle button presses
+    if (button.update()) {
+      if (button.fallingEdge()) {
+        // the button was pressed down
+        button_start_time = millis();
+      } else {
+        // the button was released
+        button_held_time = millis() - button_start_time;
+        if (button_held_time > 500) {  // TODO: make the magic number into LONG_PRESS_TIME?
+          // long press stops/starts playing
+          if (is_playing) {
+            is_playing = 0;
+          } else {
+            is_playing = 1;
+            step_start_time = millis();
+          }
+        } else {
+          // short press, move the selection
+          selected_step = (selected_step + 1) % NUM_STEPS;
+          if (selected_step == 0) {
+            // wrapped off the end, increment track
+            selected_track = (selected_track + 1) % NUM_TRACKS;
+          }
+          display.displaySelection(selected_track, selected_step);
+        }
       }
     }
 }
