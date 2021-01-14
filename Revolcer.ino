@@ -4,6 +4,7 @@
 #include <SD.h>
 #include <SerialFlash.h>
 #include <Bounce.h>
+#include <Encoder.h>
 
 // WAV files converted to code by wav2sketch
 #include "AudioSampleSnare.h"        // http://www.freesound.org/people/KEVOY/sounds/82583/
@@ -21,6 +22,8 @@
 // order data flows, inputs/sources -> processing -> outputs
 //
 AudioPlayMemory    sound0;
+//AudioEffectGranular granular;
+AudioEffectBitcrusher crusher;
 AudioPlayMemory    sound1;
 AudioPlayMemory    sound2;
 AudioMixer4        mixer;
@@ -28,10 +31,15 @@ AudioOutputAnalog  dac;     // play to on-chip DAC
 
 // Create Audio connections between the components
 //
-AudioConnection c1(sound0, 0, mixer, 1);
-AudioConnection c2(sound1, 0, mixer, 0);
+AudioConnection c1(sound0, crusher);
+AudioConnection c12(crusher, 0, mixer, 0);
+AudioConnection c2(sound1, 0, mixer, 1);
 AudioConnection c3(sound2, 0, mixer, 2);
 AudioConnection c4(mixer, 0, dac, 0);
+
+// audio memory
+#define GRANULAR_MEMORY_SIZE 12800  // enough for 290 ms at 44.1 kHz
+int16_t granularMemory[GRANULAR_MEMORY_SIZE];
 
 uint8_t kick_pattern[NUM_STEPS] =
            {1, 1, 0, 0,
@@ -75,6 +83,11 @@ Bounce button = Bounce(14, 20);
 unsigned long button_start_time = 0;
 unsigned long button_held_time = 0;
 
+Encoder enc = Encoder(9, 12);
+long previous_encoder_value = -999;
+long encoder_value;
+#define SLOP 3
+
 // UI variables
 uint8_t selected_track = 0;
 uint8_t selected_step = 0;
@@ -92,7 +105,8 @@ void setup() {
 
   // reduce gains for everyone
   mixer.gain(0, 0.5);
-  mixer.gain(0, 0.5);
+  mixer.gain(1, 0.5);
+  mixer.gain(2, 0.5);
 
   // button setup
   pinMode(14, INPUT_PULLUP);
@@ -138,4 +152,9 @@ void loop() {
         }
       }
     }
+
+    // handle encoder
+    encoder_value = enc.read();
+    crusher.bits(16);
+    crusher.sampleRate(11025);
 }
