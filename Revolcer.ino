@@ -22,8 +22,6 @@
 // order data flows, inputs/sources -> processing -> outputs
 //
 AudioPlayMemory    sound0;
-//AudioEffectGranular granular;
-AudioEffectBitcrusher crusher;
 AudioPlayMemory    sound1;
 AudioPlayMemory    sound2;
 AudioMixer4        mixer;
@@ -31,15 +29,10 @@ AudioOutputAnalog  dac;     // play to on-chip DAC
 
 // Create Audio connections between the components
 //
-AudioConnection c1(sound0, crusher);
-AudioConnection c12(crusher, 0, mixer, 0);
+AudioConnection c1(sound0, 0, mixer, 0);
 AudioConnection c2(sound1, 0, mixer, 1);
 AudioConnection c3(sound2, 0, mixer, 2);
 AudioConnection c4(mixer, 0, dac, 0);
-
-// audio memory
-#define GRANULAR_MEMORY_SIZE 12800  // enough for 290 ms at 44.1 kHz
-int16_t granularMemory[GRANULAR_MEMORY_SIZE];
 
 uint8_t kick_pattern[NUM_STEPS] =
            {1, 1, 0, 0,
@@ -82,11 +75,15 @@ const uint8_t BPM = 60;
 Bounce button = Bounce(14, 20);
 unsigned long button_start_time = 0;
 unsigned long button_held_time = 0;
+#define LONG_PRESS_TIME 400
+bool button_pressed = false;
+bool ignore_rising_edge = true;
 
 Encoder enc = Encoder(9, 12);
 long previous_encoder_value = -999;
 long encoder_value;
-#define SLOP 3
+#define CLICKS 60
+const float clicks_per_step = (float)CLICKS / (float)NUM_STEPS;
 
 // UI variables
 uint8_t selected_track = 0;
@@ -134,27 +131,48 @@ void loop() {
       if (button.fallingEdge()) {
         // the button was pressed down
         button_start_time = millis();
+        button_pressed = true;
+        ignore_rising_edge = false;
       } else {
         // the button was released
+        button_pressed = false;
         button_held_time = millis() - button_start_time;
-        if (button_held_time > 500) {  // TODO: make the magic number into LONG_PRESS_TIME?
-          // long press toggles the pattern at this step
+        if (button_held_time < LONG_PRESS_TIME) {
+          // short press toggles the pattern at this step
           tracks[selected_track]->toggleStep(selected_step);
           display.displayTrack(selected_track);
         } else {
-          // short press, move the selection
-          selected_step = (selected_step + 1) % NUM_STEPS;
-          if (selected_step == 0) {
-            // wrapped off the end, increment track
+          // long press changes the selected track
+          // we might already have acted on this button press
+          if (!ignore_rising_edge) {
             selected_track = (selected_track + 1) % NUM_TRACKS;
+            display.displaySelection(selected_track, selected_step);
           }
-          display.displaySelection(selected_track, selected_step);
         }
+      }
+    }
+    // even if the button didn't change, if it has been pressed more than LONG_PRESS_TIME
+    // we should do the long press action now and mark to ignore the next rising edge.
+    if (button_pressed) {
+      if (millis() - button_start_time >= LONG_PRESS_TIME) {
+        ignore_rising_edge = true;
+        button_pressed = false;
+        selected_track = (selected_track + 1) % NUM_TRACKS;
+        display.displaySelection(selected_track, selected_step);
       }
     }
 
     // handle encoder
     encoder_value = enc.read();
-    crusher.bits(16);
-    crusher.sampleRate(11025);
+    if (encoder_value != previous_encoder_value) {
+      previous_encoder_value = encoder_value;
+      // selected step is just the fraction of one rotation devoted to each step
+      // 60 counts per rotation
+      encoder_value = encoder_value % CLICKS;
+      if (encoder_value < 0) {
+        encoder_value += CLICKS;
+      }
+      selected_step = (int) (encoder_value / clicks_per_step);  // 3.75 clicks per step for 16 steps
+      display.displaySelection(selected_track, selected_step);
+    }
 }

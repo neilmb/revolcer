@@ -16,7 +16,7 @@ class Display {
 
   private:
     Track **_tracks;
-    uint8_t _last_step_num, _last_selected_track, _last_selected_step;
+    uint8_t _last_step_num, _last_selected_step;
     // OLED display
     U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C *u8g2;
 };
