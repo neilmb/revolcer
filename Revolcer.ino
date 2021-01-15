@@ -7,12 +7,11 @@
 #include <Encoder.h>
 
 // WAV files converted to code by wav2sketch
-#include "AudioSampleSnare.h"        // http://www.freesound.org/people/KEVOY/sounds/82583/
-#include "AudioSampleTomtom.h"       // http://www.freesound.org/people/zgump/sounds/86334/
-#include "AudioSampleHihat.h"        // http://www.freesound.org/people/mhc/sounds/102790/
-#include "AudioSampleKick.h"         // http://www.freesound.org/people/DWSD/sounds/171104/
-#include "AudioSampleGong.h"         // http://www.freesound.org/people/juskiddink/sounds/86773/
-#include "AudioSampleCashregister.h" // http://www.freesound.org/people/kiddpark/sounds/201159/
+#include "AudioSampleSnare.h"
+#include "AudioSampleTom.h"
+#include "AudioSampleClosedhat.h"
+#include "AudioSampleOpenhat.h"
+#include "AudioSampleKick.h"
 
 #include "constants.h"
 #include "Track.h"
@@ -24,15 +23,23 @@
 AudioPlayMemory    sound0;
 AudioPlayMemory    sound1;
 AudioPlayMemory    sound2;
-AudioMixer4        mixer;
+AudioPlayMemory    sound3;
+AudioPlayMemory    sound4;
+AudioMixer4        mixer1;
+AudioMixer4        mixer2;
 AudioOutputAnalog  dac;     // play to on-chip DAC
 
 // Create Audio connections between the components
 //
-AudioConnection c1(sound0, 0, mixer, 0);
-AudioConnection c2(sound1, 0, mixer, 1);
-AudioConnection c3(sound2, 0, mixer, 2);
-AudioConnection c4(mixer, 0, dac, 0);
+AudioConnection c1(sound0, 0, mixer1, 0);
+AudioConnection c2(sound1, 0, mixer1, 1);
+AudioConnection c3(sound2, 0, mixer1, 2);
+AudioConnection c4(sound3, 0, mixer1, 3);
+
+AudioConnection c5(sound4, 0, mixer2, 0);
+AudioConnection c6(mixer1, 0, mixer2, 1);
+
+AudioConnection c7(mixer2, 0, dac, 0);
 
 uint8_t kick_pattern[NUM_STEPS] =
            {1, 1, 0, 0,
@@ -54,17 +61,37 @@ Track snare(snare_pattern,
             AudioSampleSnare,
             "Snare");
 
-uint8_t hat_pattern[NUM_STEPS] =
+uint8_t tom_pattern[NUM_STEPS] =
+           {0, 1, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0};
+Track tom(tom_pattern,
+            &sound2,
+            AudioSampleTom,
+            "Tom");
+
+uint8_t closedhat_pattern[NUM_STEPS] =
            {0, 1, 1, 0,
             0, 1, 1, 0,
             0, 1, 1, 0,
             0, 1, 1, 0};
-Track hat(hat_pattern,
-            &sound2,
-            AudioSampleHihat,
-            "HiHat");
+Track closedhat(closedhat_pattern,
+            &sound3,
+            AudioSampleClosedhat,
+            "ClosedHat");
 
-Track *tracks[NUM_TRACKS] = { &kick, &snare, &hat };
+uint8_t openhat_pattern[NUM_STEPS] =
+           {0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0};
+Track openhat(openhat_pattern,
+            &sound3,
+            AudioSampleOpenhat,
+            "OpenHat");
+
+Track *tracks[NUM_TRACKS] = { &kick, &snare, &tom, &closedhat, &openhat };
 
 Display display(tracks);
 
@@ -104,9 +131,12 @@ void setup() {
   dac.analogReference(INTERNAL);
 
   // reduce gains for everyone
-  mixer.gain(0, 0.5);
-  mixer.gain(1, 0.5);
-  mixer.gain(2, 0.5);
+  mixer1.gain(0, 0.25);
+  mixer1.gain(1, 0.25);
+  mixer1.gain(2, 0.25);
+  mixer1.gain(3, 0.5);  // close hi-hat needs to be louder
+
+  mixer2.gain(0, 0.25);
 
   // button setup
   pinMode(14, INPUT_PULLUP);
