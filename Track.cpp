@@ -3,10 +3,11 @@
 #include <Audio.h>
 #include "Track.h"
 
-Track::Track(uint8_t* pattern, AudioPlayMemory* player, const unsigned int* sample) {
+Track::Track(uint8_t* pattern, AudioPlayMemory* player, const unsigned int* sample, const char *title) {
   _pattern = pattern;
   _player = player;
   _sample = sample;
+  snprintf(_title, TITLE_LEN, "%-30s", title);
 }
 
 void Track::playStep(uint8_t step_num) {

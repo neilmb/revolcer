@@ -41,7 +41,8 @@ uint8_t kick_pattern[NUM_STEPS] =
             1, 0, 0, 0};
 Track kick(kick_pattern,
            &sound0,
-           AudioSampleKick);
+           AudioSampleKick,
+           "Kick");
 
 uint8_t snare_pattern[NUM_STEPS] =
            {0, 0, 1, 0,
@@ -50,7 +51,8 @@ uint8_t snare_pattern[NUM_STEPS] =
             0, 0, 1, 1};
 Track snare(snare_pattern,
             &sound1,
-            AudioSampleSnare);
+            AudioSampleSnare,
+            "Snare");
 
 uint8_t hat_pattern[NUM_STEPS] =
            {0, 1, 1, 0,
@@ -59,7 +61,8 @@ uint8_t hat_pattern[NUM_STEPS] =
             0, 1, 1, 0};
 Track hat(hat_pattern,
             &sound2,
-            AudioSampleHihat);
+            AudioSampleHihat,
+            "HiHat");
 
 Track *tracks[NUM_TRACKS] = { &kick, &snare, &hat };
 
