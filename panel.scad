@@ -3,6 +3,7 @@ SKIRT_DEPTH = 20;
 WIDTH = 150;
 INNER_HEIGHT = 61;  // The length of the Teensy board
 HEIGHT = INNER_HEIGHT + 2 * PANEL_THICKNESS;
+CORNER_RADIUS = 1;
 
 BUTTON_DIAMETER = 15.7;
 ENCODER_DIAMETER = 7.05;
@@ -13,22 +14,24 @@ NEOPIXEL_TOP_EDGE = 56;
 
 SLOT_CENTERLINE_X = 15;
 SLOT_CENTERLINE_DOWN = 10;
-USB_PORT_WIDTH = 8 + 0.5; // 0.5mm paddinhg
+USB_PORT_WIDTH = 8 + 0.5; // 0.5mm padding
 USB_PORT_HEIGHT = 3 + 0.5; // 0.5mm padding
 MICROSD_WIDTH = 11 + 0.5; // 0.5mm padding 
 MICROSD_HEIGHT = 1 + 0.5; // 0.5mm padding
 
 $fn=40;
 
+include <lib/roundedcube.scad>
+
 module structure() {
     // front panel
     cube([WIDTH, HEIGHT, PANEL_THICKNESS]);
 
     // skirt
-    translate([0, 0, -SKIRT_DEPTH]) cube([WIDTH, PANEL_THICKNESS, SKIRT_DEPTH]);
-    translate([0, HEIGHT - PANEL_THICKNESS, -SKIRT_DEPTH]) cube([WIDTH, PANEL_THICKNESS, SKIRT_DEPTH]);
-    translate([0, 0, -SKIRT_DEPTH]) cube([PANEL_THICKNESS, HEIGHT, SKIRT_DEPTH]);
-    translate([WIDTH - PANEL_THICKNESS, 0, -SKIRT_DEPTH]) cube([PANEL_THICKNESS, HEIGHT, SKIRT_DEPTH]);
+    translate([0, 0, -SKIRT_DEPTH]) roundedcube([WIDTH, PANEL_THICKNESS, SKIRT_DEPTH], CORNER_RADIUS, "zmax");
+    translate([0, HEIGHT - PANEL_THICKNESS, -SKIRT_DEPTH]) roundedcube([WIDTH, PANEL_THICKNESS, SKIRT_DEPTH], CORNER_RADIUS, "zmax");
+    translate([0, 0, -SKIRT_DEPTH]) roundedcube([PANEL_THICKNESS, HEIGHT, SKIRT_DEPTH], CORNER_RADIUS, "zmax");
+    translate([WIDTH - PANEL_THICKNESS, 0, -SKIRT_DEPTH]) roundedcube([PANEL_THICKNESS, HEIGHT, SKIRT_DEPTH], CORNER_RADIUS, "zmax");
 }
 
 module button_hole(x, y) {
