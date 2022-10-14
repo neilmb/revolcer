@@ -1,6 +1,4 @@
 #include <Audio.h>
-#include <Wire.h>
-#include <SPI.h>
 #include <SD.h>
 #include <SerialFlash.h>
 #include <Bounce.h>
@@ -27,7 +25,7 @@ AudioPlayMemory    sound3;
 AudioPlayMemory    sound4;
 AudioMixer4        mixer1;
 AudioMixer4        mixer2;
-AudioOutputAnalog  dac;     // play to on-chip DAC
+AudioOutputMQS  mqs;     // play to on-chip DAC
 
 // Create Audio connections between the components
 //
@@ -39,7 +37,8 @@ AudioConnection c4(sound3, 0, mixer1, 3);
 AudioConnection c5(sound4, 0, mixer2, 0);
 AudioConnection c6(mixer1, 0, mixer2, 1);
 
-AudioConnection c7(mixer2, 0, dac, 0);
+AudioConnection c7(mixer2, 0, mqs, 0);
+AudioConnection c8(mixer2, 0, mqs, 1); // right and left channels of output are the same
 
 uint8_t kick_pattern[NUM_STEPS] =
            {1, 1, 0, 0,
@@ -101,19 +100,21 @@ uint8_t step_num = -1;
 
 const uint8_t BPM = 60;
 
-// one button to start with on pin 14, 20ms debounce time
-Bounce button = Bounce(14, 20);
+// one button to start with on pin 40, 15ms debounce time
+#define ENCODER_BUTTON_PIN 40
+Bounce button = Bounce(40, 15);
 unsigned long button_start_time = 0;
 unsigned long button_held_time = 0;
 #define LONG_PRESS_TIME 400
 bool button_pressed = false;
 bool ignore_rising_edge = true;
 
-Encoder enc = Encoder(9, 12);
-long previous_encoder_value = -999;
+// encoder on pins 39 and 38 right now
+Encoder enc = Encoder(39, 38);
 long encoder_value;
-#define CLICKS 60
-const float clicks_per_step = (float)CLICKS / (float)NUM_STEPS;
+uint8_t encoded_step;
+#define CLICKS 96
+const float clicks_per_step = float(CLICKS) / float(NUM_STEPS);
 
 // UI variables
 uint8_t selected_track = 0;
@@ -121,14 +122,12 @@ uint8_t selected_step = 0;
 
 void setup() {
 
+  Serial.begin(9600);
+  Serial.println("Beginning Revolcer...");
+
   // Audio connections require memory to work.  For more
   // detailed information, see the MemoryAndCpuUsage example
   AudioMemory(10);
-
-  // by default the Teensy 3.1 DAC uses 3.3Vp-p output
-  // if your 3.3V power has noise, switching to the
-  // internal 1.2V reference can give you a clean signal
-  dac.analogReference(INTERNAL);
 
   // reduce gains for everyone
   mixer1.gain(0, 0.25);
@@ -139,73 +138,71 @@ void setup() {
   mixer2.gain(0, 0.25);
 
   // button setup
-  pinMode(14, INPUT_PULLUP);
-
-  display.displaySelection(selected_track, selected_step);
+  pinMode(ENCODER_BUTTON_PIN, INPUT_PULLUP);
 }
 
 void loop() {
-    if (millis() > step_start_time) {
-      // time to start the next step
-      step_num = (step_num + 1) % NUM_STEPS;
-      step_start_time += 60000 / BPM / 4.0f;  // 4 steps per beat, 60000 milliseconds per minute
+  if (millis() > step_start_time) {
+    // time to start the next step
+    step_num = (step_num + 1) % NUM_STEPS;
+    step_start_time += 60000 / BPM / 4.0f;  // 4 steps per beat, 60000 milliseconds per minute
 
-      // draw for this step
-      display.displayStep(step_num);
+    // draw for this step
+    display.setStep(step_num);
 
-      // play the notes
-      for (int j = 0; j < NUM_TRACKS; j++) {
-        tracks[j]->playStep(step_num);
-      }  
+    // play the notes
+    for (int j = 0; j < NUM_TRACKS; j++) {
+      tracks[j]->playStep(step_num);
     }
+  } // END next step handler
 
-    // handle button presses
-    if (button.update()) {
-      if (button.fallingEdge()) {
-        // the button was pressed down
-        button_start_time = millis();
-        button_pressed = true;
-        ignore_rising_edge = false;
+  // handle button presses
+  if (button.update()) {
+    if (button.fallingEdge()) {
+      // the button was pressed down
+      button_start_time = millis();
+      button_pressed = true;
+      ignore_rising_edge = false;
+    } else {
+      // the button was released
+      button_pressed = false;
+      button_held_time = millis() - button_start_time;
+      if (button_held_time < LONG_PRESS_TIME) {
+        // short press toggles the pattern at this step
+        tracks[selected_track]->toggleStep(selected_step);
       } else {
-        // the button was released
-        button_pressed = false;
-        button_held_time = millis() - button_start_time;
-        if (button_held_time < LONG_PRESS_TIME) {
-          // short press toggles the pattern at this step
-          tracks[selected_track]->toggleStep(selected_step);
-          display.displayTrack(selected_track);
-        } else {
-          // long press changes the selected track
-          // we might already have acted on this button press
-          if (!ignore_rising_edge) {
-            selected_track = (selected_track + 1) % NUM_TRACKS;
-            display.displaySelection(selected_track, selected_step);
-          }
+        // long press changes the selected track
+        // we might already have acted on this button press
+        if (!ignore_rising_edge) {
+          selected_track = (selected_track + 1) % NUM_TRACKS;
+          display.setSelectedTrack(selected_track);
         }
       }
     }
-    // even if the button didn't change, if it has been pressed more than LONG_PRESS_TIME
-    // we should do the long press action now and mark to ignore the next rising edge.
-    if (button_pressed) {
-      if (millis() - button_start_time >= LONG_PRESS_TIME) {
-        ignore_rising_edge = true;
-        button_pressed = false;
-        selected_track = (selected_track + 1) % NUM_TRACKS;
-        display.displaySelection(selected_track, selected_step);
-      }
+  } // END button presses
+  
+  // even if the button didn't change, if it has been pressed more than LONG_PRESS_TIME
+  // we should do the long press action now and mark to ignore the next rising edge.
+  if (button_pressed) {
+    if (millis() - button_start_time >= LONG_PRESS_TIME) {
+      ignore_rising_edge = true;
+      button_pressed = false;
+      selected_track = (selected_track + 1) % NUM_TRACKS;
+    display.setSelectedTrack(selected_track);
     }
+  }
 
-    // handle encoder
-    encoder_value = enc.read();
-    if (encoder_value != previous_encoder_value) {
-      previous_encoder_value = encoder_value;
-      // selected step is just the fraction of one rotation devoted to each step
-      // 60 counts per rotation
-      encoder_value = encoder_value % CLICKS;
-      if (encoder_value < 0) {
-        encoder_value += CLICKS;
-      }
-      selected_step = (int) (encoder_value / clicks_per_step);  // 3.75 clicks per step for 16 steps
-      display.displaySelection(selected_track, selected_step);
-    }
-}
+  // handle encoder
+  encoder_value = enc.read();
+  // positive modulo of the encoder value (should be between 0 and CLICKS - 1)
+  encoder_value = ((encoder_value % CLICKS) + CLICKS) % CLICKS;
+  encoded_step = (int) encoder_value / clicks_per_step;
+  if (encoded_step != selected_step) {
+    Serial.print("step changed. encoder_value: "); Serial.println(encoder_value);
+    Serial.print("clicks_per_step: "); Serial.println(clicks_per_step);
+    Serial.print("encoded_step: "); Serial.print(encoded_step); Serial.println(selected_step);
+    selected_step = encoded_step;
+    display.setSelectedStep(selected_step);
+  }
+  display.show();
+} // END loop

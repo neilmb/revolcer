@@ -1,6 +1,6 @@
 // Display class for encapsulating screen tasks
 
-#include <U8g2lib.h>
+#include <Adafruit_NeoPixel.h>
 
 #include "Track.h"
 
@@ -10,15 +10,15 @@
 class Display {
   public:
     Display(Track **tracks);
-    void displayTrack(uint8_t track_num);
-    void displayStep(uint8_t step_num);
-    void displaySelection(uint8_t selected_step, uint8_t selected_track);
+    void setStep(uint8_t step_num);
+    void setSelectedStep(uint8_t selected_step);
+    void setSelectedTrack(uint8_t selected_track);
+    void show();
 
   private:
     Track **_tracks;
-    uint8_t _last_step_num, _last_selected_step;
-    // OLED display
-    U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C *u8g2;
+    uint8_t _step_num, _selected_step, _selected_track;  
+    Adafruit_NeoPixel *strip;
 };
 
 
