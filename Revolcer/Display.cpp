@@ -79,7 +79,8 @@ void Display::showBpm(uint8_t bpm) {
   //start all black
   strip->clear();
   for (int i = 0; i < NUM_STEPS; i++) {
-    if (i < floor((bpm / float(MAX_BPM)) * NUM_STEPS)) {
+    // this fills pixels non-linearly by the time length of a beat rather than the BPM bnumber
+    if (1.0 / i > 1.0 / floor((bpm / float(MAX_BPM)) * NUM_STEPS)) {
       strip->setPixelColor(i, 0, 255, 0);
     }
   }
