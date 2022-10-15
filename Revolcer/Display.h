@@ -14,9 +14,14 @@ class Display {
     void setSelectedStep(uint8_t selected_step);
     void setSelectedTrack(uint8_t selected_track);
     void show();
+    void showTracks();
+    void showBpm(uint8_t bpm);
+
+    void hideCursor();
 
   private:
     Track **_tracks;
+    bool _show_cursor;
     uint8_t _step_num, _selected_step, _selected_track;  
     Adafruit_NeoPixel *strip;
 };

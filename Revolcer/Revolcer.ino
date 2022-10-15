@@ -1,7 +1,7 @@
 #include <Audio.h>
 #include <SD.h>
 #include <SerialFlash.h>
-#include <Bounce.h>
+#include <Bounce2.h>
 #include <Encoder.h>
 
 // WAV files converted to code by wav2sketch
@@ -98,26 +98,43 @@ Display display(tracks);
 unsigned long step_start_time = 0;
 uint8_t step_num = -1;
 
-const uint8_t BPM = 60;
+uint8_t bpm = 60;
 
-// one button to start with on pin 40, 15ms debounce time
+// encoder button to start with
 #define ENCODER_BUTTON_PIN 40
-Bounce button = Bounce(40, 15);
-unsigned long button_start_time = 0;
-unsigned long button_held_time = 0;
-#define LONG_PRESS_TIME 400
-bool button_pressed = false;
-bool ignore_rising_edge = true;
+Button encoder_button = Button();
+// start/stop button
+#define GO_BUTTON_PIN 24
+Button go_button = Button();
+// mute button
+#define MUTE_BUTTON_PIN 25
+Button mute_button = Button();
+// track select button
+#define TRACK_BUTTON_PIN 26
+Button track_button = Button();
+// tempo select button
+#define TEMPO_BUTTON_PIN 27
+Button tempo_button = Button();
+// volume select button
+#define VOLUME_BUTTON_PIN 28
+Button volume_button = Button();
+
+unsigned long last_input_time = 0;
+#define CURSOR_HIDE_TIME 2000
 
 // encoder on pins 39 and 38 right now
 Encoder enc = Encoder(39, 38);
-long encoder_value;
-uint8_t encoded_step;
+long encoder_value, starting_encoder_value;
+uint8_t encoded_step, encoded_track;
 #define CLICKS 96
 const float clicks_per_step = float(CLICKS) / float(NUM_STEPS);
+const float clicks_per_track = float(CLICKS) / float(NUM_TRACKS);
+
 
 // UI variables
 uint8_t selected_track = 0;
+uint8_t starting_track, starting_bpm;
+
 uint8_t selected_step = 0;
 
 void setup() {
@@ -138,14 +155,24 @@ void setup() {
   mixer2.gain(0, 0.25);
 
   // button setup
-  pinMode(ENCODER_BUTTON_PIN, INPUT_PULLUP);
+  encoder_button.attach(ENCODER_BUTTON_PIN, INPUT_PULLUP);
+  go_button.attach(GO_BUTTON_PIN, INPUT_PULLUP);
+  go_button.setPressedState(LOW);
+  mute_button.attach(MUTE_BUTTON_PIN, INPUT_PULLUP);
+  mute_button.setPressedState(LOW);
+  track_button.attach(TRACK_BUTTON_PIN, INPUT_PULLUP);
+  track_button.setPressedState(LOW);
+  tempo_button.attach(TEMPO_BUTTON_PIN, INPUT_PULLUP);
+  tempo_button.setPressedState(LOW);
+  volume_button.attach(VOLUME_BUTTON_PIN, INPUT_PULLUP);
+  volume_button.setPressedState(LOW);
 }
 
 void loop() {
   if (millis() > step_start_time) {
     // time to start the next step
     step_num = (step_num + 1) % NUM_STEPS;
-    step_start_time += 60000 / BPM / 4.0f;  // 4 steps per beat, 60000 milliseconds per minute
+    step_start_time += 60000 / bpm / 4.0f;  // 4 steps per beat, 60000 milliseconds per minute
 
     // draw for this step
     display.setStep(step_num);
@@ -157,52 +184,77 @@ void loop() {
   } // END next step handler
 
   // handle button presses
-  if (button.update()) {
-    if (button.fallingEdge()) {
-      // the button was pressed down
-      button_start_time = millis();
-      button_pressed = true;
-      ignore_rising_edge = false;
-    } else {
-      // the button was released
-      button_pressed = false;
-      button_held_time = millis() - button_start_time;
-      if (button_held_time < LONG_PRESS_TIME) {
-        // short press toggles the pattern at this step
-        tracks[selected_track]->toggleStep(selected_step);
-      } else {
-        // long press changes the selected track
-        // we might already have acted on this button press
-        if (!ignore_rising_edge) {
-          selected_track = (selected_track + 1) % NUM_TRACKS;
-          display.setSelectedTrack(selected_track);
-        }
-      }
-    }
-  } // END button presses
-  
-  // even if the button didn't change, if it has been pressed more than LONG_PRESS_TIME
-  // we should do the long press action now and mark to ignore the next rising edge.
-  if (button_pressed) {
-    if (millis() - button_start_time >= LONG_PRESS_TIME) {
-      ignore_rising_edge = true;
-      button_pressed = false;
-      selected_track = (selected_track + 1) % NUM_TRACKS;
-    display.setSelectedTrack(selected_track);
-    }
+  encoder_button.update();
+  go_button.update();
+  mute_button.update();
+  track_button.update();
+  tempo_button.update();
+  volume_button.update();
+
+  // track button just got pressed, record things when that happened for use below
+  if (track_button.pressed()) {
+    // track button just got pressed, save the starting encoder position
+    starting_encoder_value = enc.read();
+    starting_track = selected_track;
   }
 
-  // handle encoder
-  encoder_value = enc.read();
-  // positive modulo of the encoder value (should be between 0 and CLICKS - 1)
-  encoder_value = ((encoder_value % CLICKS) + CLICKS) % CLICKS;
-  encoded_step = (int) encoder_value / clicks_per_step;
-  if (encoded_step != selected_step) {
-    Serial.print("step changed. encoder_value: "); Serial.println(encoder_value);
-    Serial.print("clicks_per_step: "); Serial.println(clicks_per_step);
-    Serial.print("encoded_step: "); Serial.print(encoded_step); Serial.println(selected_step);
-    selected_step = encoded_step;
-    display.setSelectedStep(selected_step);
+  // tempo button just got pressed, record things when that happened for use below
+  if (tempo_button.pressed()) {
+    starting_encoder_value = enc.read();
+    starting_bpm = bpm;
+    Serial.print("Changing bpm; bpm: "); Serial.println(bpm);
   }
-  display.show();
+  if (tempo_button.released()) {
+    Serial.print("Changed bpm; bpm: "); Serial.println(bpm);
+  }
+
+  if (track_button.isPressed()) {
+    // in track select mode
+    // encoder changes the selected track
+    encoder_value = enc.read() - starting_encoder_value;
+    // positive modulo of the encoder value (should be between 0 and CLICKS - 1)
+    encoder_value = ((encoder_value % CLICKS) + CLICKS) % CLICKS;
+    encoded_track = (int) encoder_value / clicks_per_step;
+    // encoded_track needs to be relative to what track we started on
+    encoded_track = (((encoded_track + starting_track) % NUM_TRACKS) + NUM_TRACKS) % NUM_TRACKS;
+    if (encoded_track != selected_track) {
+      selected_track = encoded_track;
+      display.setSelectedTrack(selected_track);
+      last_input_time = millis();
+    }
+    display.showTracks();
+  } // END track select mode
+  else if (tempo_button.isPressed()) {
+    // in tempo select mode
+    encoder_value = enc.read() - starting_encoder_value;
+    // 1-bpm change per detent on the encoder
+    // TODO: is this the right speed of adjustment?
+    bpm = max(min(starting_bpm + (encoder_value * 0.25), MAX_BPM), MIN_BPM);
+    display.showBpm(bpm);
+  } else {
+    // in play mode
+    // handle encoder presses
+    if (encoder_button.pressed()) {
+      // encoder button was just pressed, toggle this step off
+      tracks[selected_track]->toggleStep(selected_step);
+      last_input_time = millis();
+    }
+    // handle encoder to select step
+    encoder_value = enc.read();
+    // positive modulo of the encoder value (should be between 0 and CLICKS - 1)
+    encoder_value = ((encoder_value % CLICKS) + CLICKS) % CLICKS;
+    encoded_step = (int) encoder_value / clicks_per_step;
+    if (encoded_step != selected_step) {
+      selected_step = encoded_step;
+      display.setSelectedStep(selected_step);
+      last_input_time = millis();
+    }
+    display.show();
+
+    // hide cursor if it has been long enough
+    if (millis() - last_input_time > CURSOR_HIDE_TIME) {
+      display.hideCursor();
+    }
+
+  } // END play mode
 } // END loop
