@@ -27,12 +27,16 @@ module back_panel() {
         screw_hole(SCREW3_X, SCREW3_Y);
         screw_hole(SCREW4_X, SCREW4_Y);
     }
+
+    // CPU Support Stud
+    translate([SLOT_CENTERLINE_X - (7/2), PANEL_THICKNESS + 25, PLATE_THICKNESS]) cube([7, 7, SKIRT_DEPTH - SLOT_TOP_DOWN - CPU_CHIP_THICKNESS]);
+
 }
 
-back_panel();
+//back_panel();
 
 // TEST code
-//intersection() {
-//    back_panel();
-//    translate([0, 0, -100]) cube([20,20,1000]);
-//}
+intersection() {
+    back_panel();
+    translate([0, 0, -100]) cube([30,70,1000]);
+}

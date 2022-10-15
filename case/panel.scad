@@ -1,5 +1,4 @@
 include <common.scad>
-SKIRT_DEPTH = 20;
 TOP_THICKNESS = 2*PANEL_THICKNESS;
 
 BUTTON_DIAMETER = 15.7;
@@ -13,14 +12,6 @@ NEOPIXEL_LENGTH = 100.5;
 NEOPIXEL_RESISTOR_WIDTH = 3;
 NEOPIXEL_RESISTOR_DEPTH = 1.4;
 NEOPIXEL_RESISTOR_GAP = 0.5;
-
-SLOT_CENTERLINE_X = 21;
-SLOT_CENTERLINE_DOWN = 12;
-USB_PORT_WIDTH = 8 + 0.5; // 0.5mm padding
-USB_PORT_HEIGHT = 3 + 0.5; // 0.5mm padding
-MICROSD_WIDTH = 11 + 0.5; // 0.5mm padding 
-MICROSD_HEIGHT = 1 + 0.5; // 0.5mm padding
-STUD_THICKNESS = SCREW_POSITION_OFFSET+SCREW_HEAD-1;
 
 //FIXME
 $fn=10;
@@ -63,12 +54,12 @@ module neopixels() {
 
 module neopixel_stud(x, y) {
     // mounting stud for neopixel
-    translate([x, y, NEOPIXEL_RESISTOR_DEPTH - 2.5]) cylinder(h=4, r=0.8);
+    translate([x, y, NEOPIXEL_RESISTOR_DEPTH - 5]) cylinder(h=5, r=0.8);
 }
 
 module neopixel_studs() {
     stud_center = NEOPIXEL_TOP_EDGE - NEOPIXEL_WIDTH - 2;
-    post_offset = 12.5;
+    post_offset = 12.6;
     neopixel_stud(NEOPIXEL_LEFT_END + post_offset, stud_center);
     neopixel_stud(NEOPIXEL_LEFT_END + post_offset * 3, stud_center);
     neopixel_stud(NEOPIXEL_LEFT_END + post_offset * 5, stud_center);
@@ -84,11 +75,11 @@ module headphones() {
 
 module slots() {
     // USB port on top edge
-    translate([SLOT_CENTERLINE_X - USB_PORT_WIDTH/2, 50, -SLOT_CENTERLINE_DOWN - USB_PORT_HEIGHT/2])
+    translate([PANEL_THICKNESS + LID_STUD_THICKNESS + 5, 50, -SLOT_TOP_DOWN - USB_PORT_HEIGHT])
     cube([USB_PORT_WIDTH, 100, USB_PORT_HEIGHT]);
     
     //MicroSD on bottom edge
-    translate([SLOT_CENTERLINE_X - MICROSD_WIDTH/2, -50, -SLOT_CENTERLINE_DOWN - MICROSD_HEIGHT/2])
+    translate([PANEL_THICKNESS + LID_STUD_THICKNESS + 3, -50, -SLOT_TOP_DOWN - MICROSD_HEIGHT])
     cube([MICROSD_WIDTH, 100, MICROSD_HEIGHT]);
 }
 
@@ -103,31 +94,38 @@ module screw_stud(x, y) {
 module case_studs() {
     difference() {
         translate([PANEL_THICKNESS, PANEL_THICKNESS, -SKIRT_DEPTH])
-            cube([STUD_THICKNESS, STUD_THICKNESS, SKIRT_DEPTH]);
+            cube([LID_STUD_THICKNESS, LID_STUD_THICKNESS, SKIRT_DEPTH]);
             
         screw_stud(SCREW1_X, SCREW1_Y);
     }
     
     difference() {
-        translate([PANEL_THICKNESS, HEIGHT-PANEL_THICKNESS-STUD_THICKNESS, -SKIRT_DEPTH])
-            cube([STUD_THICKNESS, STUD_THICKNESS, SKIRT_DEPTH]);
+        translate([PANEL_THICKNESS, HEIGHT - PANEL_THICKNESS -  LID_STUD_THICKNESS, -SKIRT_DEPTH])
+            cube([LID_STUD_THICKNESS, LID_STUD_THICKNESS, SKIRT_DEPTH]);
             
         screw_stud(SCREW2_X, SCREW2_Y);
     }
 
     difference() {
-        translate([WIDTH-PANEL_THICKNESS-STUD_THICKNESS, PANEL_THICKNESS, -SKIRT_DEPTH])
-            cube([STUD_THICKNESS, STUD_THICKNESS, SKIRT_DEPTH]);
+        translate([WIDTH - PANEL_THICKNESS - LID_STUD_THICKNESS, PANEL_THICKNESS, -SKIRT_DEPTH])
+            cube([LID_STUD_THICKNESS, LID_STUD_THICKNESS, SKIRT_DEPTH]);
             
         screw_stud(SCREW3_X, SCREW3_Y);
     }
 
     difference() {
-        translate([WIDTH-PANEL_THICKNESS-STUD_THICKNESS, HEIGHT-PANEL_THICKNESS-STUD_THICKNESS, -SKIRT_DEPTH])
-            cube([STUD_THICKNESS, STUD_THICKNESS, SKIRT_DEPTH]);
+        translate([WIDTH - PANEL_THICKNESS - LID_STUD_THICKNESS, HEIGHT - PANEL_THICKNESS - LID_STUD_THICKNESS, -SKIRT_DEPTH])
+            cube([LID_STUD_THICKNESS, LID_STUD_THICKNESS, SKIRT_DEPTH]);
             
         screw_stud(SCREW4_X, SCREW4_Y);
     }
+}
+
+module cpu_support_posts() {
+    gap = SLOT_TOP_DOWN - CPU_BOARD_THICKNESS;
+    centerline = PANEL_THICKNESS + LID_STUD_THICKNESS + 5 + (USB_PORT_WIDTH / 2);
+    translate([SLOT_CENTERLINE_X - (3.5/2), PANEL_THICKNESS + 8, -gap]) cube([3.5, 3.5, gap]);
+    translate([SLOT_CENTERLINE_X - (3/2), PANEL_THICKNESS + 36, -gap]) cube([3, 3, gap]);
 }
 
 module case() {
@@ -142,20 +140,25 @@ module case() {
     }
     case_studs();
     neopixel_studs();
+    cpu_support_posts();
 }
 //case();
 
-//Test print
+//Test neopixel print
+//intersection() {
+//    case();
+//    translate([28, 45, -20]) cube([105,13,100]);
+//}
+
+// End ct
 intersection() {
     case();
-    translate([28, 45, 0]) cube([72,13,100]);
+    translate([0, 0, -50]) cube([35,100,100]);
 }
 
 
 //TODO
 // - Add labels
-// - Add clips for teensy
-// - Add neopixel mount
 
 // encoder button test
 //intersection() {
@@ -163,9 +166,3 @@ intersection() {
 //    translate([120, 0, -500]) cube([30, 35, 1000]);
 //}
 
-// shave down the neopixel mount STL from Thingiverse
-//color("green")
-//difference() {
-//    import("neopixel_case.stl");
-//    translate([-100, -100, 1]) cube([200, 200, 35]);
-//}
