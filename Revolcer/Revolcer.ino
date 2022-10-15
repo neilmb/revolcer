@@ -145,6 +145,8 @@ float starting_volume;
 
 uint8_t selected_step = 0;
 
+bool is_playing = true;
+
 void setup() {
 
   Serial.begin(9600);
@@ -179,19 +181,24 @@ void setup() {
 }
 
 void loop() {
-  if (millis() > step_start_time) {
-    // time to start the next step
-    step_num = (step_num + 1) % NUM_STEPS;
-    step_start_time += 60000 / bpm / 4.0f;  // 4 steps per beat, 60000 milliseconds per minute
+  if (is_playing) {
+    if (millis() > step_start_time) {
+      // time to start the next step
+      step_num = (step_num + 1) % NUM_STEPS;
+      step_start_time += 60000 / bpm / 4.0f;  // 4 steps per beat, 60000 milliseconds per minute
 
-    // draw for this step
-    display.setStep(step_num);
+      // draw for this step
+      display.setStep(step_num);
 
-    // play the notes
-    for (int j = 0; j < NUM_TRACKS; j++) {
-      tracks[j]->playStep(step_num);
-    }
-  } // END next step handler
+      // play the notes
+      for (int j = 0; j < NUM_TRACKS; j++) {
+        tracks[j]->playStep(step_num);
+      }
+    } // END next step handler
+  } // END if playing
+  else {
+    step_start_time = millis();
+  }
 
   // handle button presses
   encoder_button.update();
@@ -226,6 +233,11 @@ void loop() {
   }
   if (volume_button.released()) {
     Serial.print("Changed volume; volume: "); Serial.println(volume);
+  }
+
+  // go button just got pressed
+  if (go_button.pressed()) {
+    is_playing = !is_playing;    
   }
 
 
