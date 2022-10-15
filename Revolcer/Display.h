@@ -16,6 +16,7 @@ class Display {
     void show();
     void showTracks();
     void showBpm(uint8_t bpm);
+    void showVolume(float volume);
 
     void hideCursor();
 

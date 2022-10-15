@@ -9,6 +9,8 @@
 #define MAX_BPM 204
 #define MIN_BPM 15
 
+#define MAX_VOLUME 3.0
+
 // NeoPixel data pin
 #define LED_PIN 2
 // How many NeoPixels are attached to the Arduino?

@@ -37,8 +37,12 @@ AudioConnection c4(sound3, 0, mixer1, 3);
 AudioConnection c5(sound4, 0, mixer2, 0);
 AudioConnection c6(mixer1, 0, mixer2, 1);
 
-AudioConnection c7(mixer2, 0, mqs, 0);
-AudioConnection c8(mixer2, 0, mqs, 1); // right and left channels of output are the same
+AudioAmplifier           amp1;
+AudioConnection c7(mixer2, amp1);
+
+AudioConnection c8(amp1, 0, mqs, 0);
+AudioConnection c9(amp1, 0, mqs, 1); // right and left channels of output are the same
+
 
 uint8_t kick_pattern[NUM_STEPS] =
            {1, 1, 0, 0,
@@ -98,8 +102,6 @@ Display display(tracks);
 unsigned long step_start_time = 0;
 uint8_t step_num = -1;
 
-uint8_t bpm = 60;
-
 // encoder button to start with
 #define ENCODER_BUTTON_PIN 40
 Button encoder_button = Button();
@@ -133,7 +135,13 @@ const float clicks_per_track = float(CLICKS) / float(NUM_TRACKS);
 
 // UI variables
 uint8_t selected_track = 0;
-uint8_t starting_track, starting_bpm;
+uint8_t starting_track;
+
+uint8_t bpm = 60;
+uint8_t starting_bpm;
+
+float volume = 1.0;
+float starting_volume;
 
 uint8_t selected_step = 0;
 
@@ -153,6 +161,8 @@ void setup() {
   mixer1.gain(3, 0.5);  // close hi-hat needs to be louder
 
   mixer2.gain(0, 0.25);
+
+  amp1.gain(volume);
 
   // button setup
   encoder_button.attach(ENCODER_BUTTON_PIN, INPUT_PULLUP);
@@ -208,6 +218,17 @@ void loop() {
     Serial.print("Changed bpm; bpm: "); Serial.println(bpm);
   }
 
+  // volume button just got pressed, record things when that happened for use below
+  if (volume_button.pressed()) {
+    starting_encoder_value = enc.read();
+    starting_volume = volume;
+    Serial.print("Changing volume; volume: "); Serial.println(volume);
+  }
+  if (volume_button.released()) {
+    Serial.print("Changed volume; volume: "); Serial.println(volume);
+  }
+
+
   if (track_button.isPressed()) {
     // in track select mode
     // encoder changes the selected track
@@ -231,6 +252,15 @@ void loop() {
     // TODO: is this the right speed of adjustment?
     bpm = max(min(starting_bpm + (encoder_value * 0.25), MAX_BPM), MIN_BPM);
     display.showBpm(bpm);
+  } // END tempo select mode
+  else if (volume_button.isPressed()) {
+    // volume select mode
+    encoder_value = enc.read() - starting_encoder_value;
+    // 8% volume change per detent on the encoder
+    // TODO: is this the right speed of adjustment?
+    volume = max(min(starting_volume * pow(1 + 0.08, encoder_value), MAX_VOLUME), 0);
+    amp1.gain(volume);
+    display.showVolume(volume);
   } else {
     // in play mode
     // handle encoder presses

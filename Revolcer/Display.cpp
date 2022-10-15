@@ -87,6 +87,18 @@ void Display::showBpm(uint8_t bpm) {
   strip->show();
 }
 
+void Display::showVolume(float volume) {
+  // start all black
+  strip->clear();
+  for (int i = 0; i < NUM_STEPS; i++) {
+    // TODO: should we display this linearly?
+    if (i < floor(volume / MAX_VOLUME * NUM_STEPS)) {
+      strip->setPixelColor(i, 0, 255, 0);
+    }   
+  }
+  strip->show();
+}
+
 void Display::hideCursor() {
   _show_cursor = false;
 }
