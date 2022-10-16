@@ -13,8 +13,8 @@ NEOPIXEL_RESISTOR_WIDTH = 3;
 NEOPIXEL_RESISTOR_DEPTH = 1.4;
 NEOPIXEL_RESISTOR_GAP = 0.5;
 
-//FIXME
-$fn=10;
+// uncomment for faster rendering 
+//$fn=10;
 
 use <lib/roundedcube.scad>
 
@@ -128,6 +128,13 @@ module cpu_support_posts() {
     translate([SLOT_CENTERLINE_X - (3/2), PANEL_THICKNESS + 36, -gap]) cube([3, 3, gap]);
 }
 
+module label() {
+    translate([14, 4, TOP_THICKNESS-0.6]) 
+        rotate([0, 0, 90])
+            linear_extrude(2)
+                text("ReVolcer", size=10);
+}
+
 module case() {
     // drill holes
     difference() {
@@ -137,12 +144,13 @@ module case() {
         neopixels();
         headphones();
         slots();
+        label();
     }
     case_studs();
     neopixel_studs();
     cpu_support_posts();
 }
-//case();
+case();
 
 //Test neopixel print
 //intersection() {
@@ -150,19 +158,9 @@ module case() {
 //    translate([28, 45, -20]) cube([105,13,100]);
 //}
 
-// End ct
-intersection() {
-    case();
-    translate([0, 0, -50]) cube([35,100,100]);
-}
-
-
-//TODO
-// - Add labels
-
-// encoder button test
+// End cut
 //intersection() {
-//    case();
-//    translate([120, 0, -500]) cube([30, 35, 1000]);
+//   case();
+//    translate([0, 0, -50]) cube([35,100,100]);
 //}
 

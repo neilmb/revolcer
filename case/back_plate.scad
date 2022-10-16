@@ -1,11 +1,11 @@
-// Back plate for revolcer project box
-// Uses M3x8 screws with washers and lockwashers
+// Back plate for ReVolcer project box
+// Uses #4 x 3/8" screws with washers and lockwashers
 
 include <common.scad>
 use <lib/roundedcube.scad>
 
-PLATE_THICKNESS = 6;
-SCREW_RECESS_DEPTH = 3.3;
+PLATE_THICKNESS = 5.2;
+SCREW_RECESS_DEPTH = 2.5;
 
 module screw_hole(x, y) {
     // a hole for a recessed screw at x, y
@@ -33,10 +33,10 @@ module back_panel() {
 
 }
 
-//back_panel();
+back_panel();
 
 // TEST code
-intersection() {
-    back_panel();
-    translate([0, 0, -100]) cube([30,70,1000]);
-}
+//intersection() {
+//    back_panel();
+//    translate([0, 0, -100]) cube([30,70,1000]);
+//}
